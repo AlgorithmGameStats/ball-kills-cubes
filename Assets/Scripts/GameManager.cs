@@ -18,6 +18,8 @@ public class GameManager : MonoBehaviour {
 	public int score=0;
 	public bool canBeatLevel = false;
 	public int beatLevelScore=0;
+    public int timeLeft = 120;
+    public int timeRefresh =20;
 
 	public GameObject mainCanvas;
 	public Text mainScoreDisplay;
@@ -34,6 +36,8 @@ public class GameManager : MonoBehaviour {
 	public AudioClip beatLevelSFX;
 
 	private Health playerHealth;
+    private bool BLCoin = false;
+    private int killsCn = 0;
 
 	void Start () {
 		if (gm == null) 
@@ -48,6 +52,9 @@ public class GameManager : MonoBehaviour {
 		// setup score display
 		Collect (0);
 
+        BLCoin = false;
+        killsCn = 0;
+
 		// make other UI inactive
 		gameOverCanvas.SetActive (false);
 		if (canBeatLevel)
@@ -55,10 +62,15 @@ public class GameManager : MonoBehaviour {
 	}
 
 	void Update () {
-		switch (gameState)
+        switch (gameState)
 		{
 			case gameStates.Playing:
-				if (playerHealth.isAlive == false)
+                timeRefresh -= 1;
+                if (timeRefresh == 0) {
+                    timeRefresh = 20;timeLeft -= 1;
+                    mainScoreDisplay.text = score.ToString() +"|"+ timeLeft.ToString();
+                }
+                if (playerHealth.isAlive == false || timeLeft==0)
 				{
 					// update gameState
 					gameState = gameStates.Death;
@@ -69,7 +81,7 @@ public class GameManager : MonoBehaviour {
 					// switch which GUI is showing		
 					mainCanvas.SetActive (false);
 					gameOverCanvas.SetActive (true);
-				} else if (canBeatLevel && score>=beatLevelScore) {
+				} else if (canBeatLevel && BLCoin==true) {
 					// update gameState
 					gameState = gameStates.BeatLevel;
 
@@ -98,23 +110,39 @@ public class GameManager : MonoBehaviour {
 				}
 				break;
 			case gameStates.GameOver:
-				// nothing
-				break;
+                // nothing
+                //sendStats(score);
+                Debug.Log("Coin collected=" + score);
+                Debug.Log("enimy killed=" + killsCn);
+                Debug.Log("time left="+timeLeft);
+                break;
 		}
 
 	}
-
 
 	public void Collect(int amount) {
 		score += amount;
 		if (canBeatLevel) {
-            mainScoreDisplay.text = score.ToString () + " of "+beatLevelScore.ToString ();
-		} else {
-            sendStats(score);
+            mainScoreDisplay.text =score.ToString() +"|"+ timeLeft.ToString();
+        } else {
 			mainScoreDisplay.text = score.ToString ();
 		}
 
 	}
+
+    public void BLCollect()
+    {
+        if (canBeatLevel)
+        {
+            BLCoin = true;
+        }
+        
+    }
+
+    public void kills(int value)
+    {
+        killsCn += value;
+    }
 
     public static void sendStats(int coins)
     {
