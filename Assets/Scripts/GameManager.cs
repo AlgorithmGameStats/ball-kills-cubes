@@ -17,8 +17,9 @@ public class GameManager : MonoBehaviour {
 
 	public int score=0;
 	public bool canBeatLevel = false;
-	public int beatLevelScore=0;
-    public int timeLeft = 120;
+    public int beatLevelScore = 0;
+    public static int timeInit = 120;
+    public int timeLeft = timeInit;
     public int timeRefresh =20;
 
 	public GameObject mainCanvas;
@@ -61,7 +62,13 @@ public class GameManager : MonoBehaviour {
 			beatLevelCanvas.SetActive (false);
 	}
 
-	void Update () {
+    void Awake()
+    {
+        //DontDestroyOnLoad(transform.gameObject);
+        //DontDestroyOnLoad(mainCanvas);
+    }
+
+    void Update () {
         switch (gameState)
 		{
 			case gameStates.Playing:
@@ -105,13 +112,13 @@ public class GameManager : MonoBehaviour {
 				backgroundMusic.volume -= 0.01f;
 				if (backgroundMusic.volume<=0.0f) {
 					AudioSource.PlayClipAtPoint (beatLevelSFX,gameObject.transform.position);
-					
+                    Debug.Log("send..");
+					sendStats(score,killsCn,timeLeft);
 					gameState = gameStates.GameOver;
 				}
 				break;
 			case gameStates.GameOver:
                 // nothing
-                //sendStats(score);
                 Debug.Log("Coin collected=" + score);
                 Debug.Log("enimy killed=" + killsCn);
                 Debug.Log("time left="+timeLeft);
@@ -144,9 +151,9 @@ public class GameManager : MonoBehaviour {
         killsCn += value;
     }
 
-    public static void sendStats(int coins)
+    public static void sendStats(int coins,int killsCn,int timeLeft)
     {
-        string GameServerURL = "http://172.31.231.177:5000/api/1.0/stats";
+        string GameServerURL = "http://game.itomaldonado.com/api/1.0/stats";
         string user = "game";
         string pass = "matrix";
         var httpWebRequest = (HttpWebRequest)WebRequest.Create(GameServerURL);
@@ -154,11 +161,11 @@ public class GameManager : MonoBehaviour {
         httpWebRequest.Method = "POST";
         string _auth = string.Format("{0}:{1}", user, pass);
         string _enc = System.Convert.ToBase64String(System.Text.Encoding.ASCII.GetBytes(_auth));
-        httpWebRequest.Headers[HttpRequestHeader.Authorization] = "Basic Z2FtZTptYXRyaXg=";
+        httpWebRequest.Headers[HttpRequestHeader.Authorization] = "Basic "+ _enc;
 
         using (var streamWriter = new StreamWriter(httpWebRequest.GetRequestStream()))
         {
-            string json = "{\"level\":1, \"time\":13.5, \"enemies\":3, \"collected_coins\":" + coins+ ", \"max_coins\":10}";
+            string json = "{\"level\":1, \"time\":"+(timeInit-timeLeft)+", \"enemies\":"+ killsCn+", \"collected_coins\":" + coins+ ", \"max_coins\":10}";
             streamWriter.Write(json);
         }
 
@@ -166,6 +173,7 @@ public class GameManager : MonoBehaviour {
         using (var streamReader = new StreamReader(httpResponse.GetResponseStream()))
         {
             var result = streamReader.ReadToEnd();
+            //result{"class":"killer"}
         }
     }
 }
