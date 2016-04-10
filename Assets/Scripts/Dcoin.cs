@@ -9,12 +9,12 @@ public class Dcoin : MonoBehaviour {
     void Start () {
         if (gm == null) gm = gameObject.GetComponent<GameManager>();
 
-        if (GameManager.gm.type == "Achiever" || GameManager.gm.type == "Killer") Destroy(gameObject);
+       
 
     }
 	
 	// Update is called once per frame
 	void Update () {
-	
+	 if (GameManager.gm.type == "Achiever" || GameManager.gm.type == "Killer") Destroy(gameObject);
 	}
 }

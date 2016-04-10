@@ -67,7 +67,6 @@ public class GameManager : MonoBehaviour {
         mainCanvas.SetActive(true);
         gameOverCanvas.SetActive(false);
         staticCanvas.SetActive(true);
-        staticCanvasDisplay.text = Application.loadedLevelName + "|" + playerType;
         if (canBeatLevel)
             beatLevelCanvas.SetActive(false);
     }
@@ -75,6 +74,7 @@ public class GameManager : MonoBehaviour {
     void Update () {
         if (ct == 0 || kt == 0)
         {
+            staticCanvasDisplay.text = Application.loadedLevelName + "|" + playerType;
             this.ct = GameObject.FindGameObjectsWithTag("pickup").Length;
             this.kt = GameObject.FindGameObjectsWithTag("enimy").Length;
             Debug.Log("ct=" + ct + "kt=" + kt);
