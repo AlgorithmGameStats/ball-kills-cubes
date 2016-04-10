@@ -34,7 +34,6 @@ public class Shooter : MonoBehaviour {
                 Vector3 moveDirection= transform.TransformDirection(moveDirectionX + moveDirectionZ);
                 moveDirection = moveDirection.normalized;
                 if (!(moveDirection.x == 0 && moveDirection.y == 0 && moveDirection.z == 0)) shootDirection = moveDirection;
-                Debug.Log("shootDirec=" + shootDirection);
                 newProjectile.GetComponent<Rigidbody>().AddForce(shootDirection * power, ForceMode.VelocityChange);
 				// play sound effect if set
 				if (shootSFX)

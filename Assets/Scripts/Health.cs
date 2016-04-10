@@ -1,5 +1,6 @@
 ﻿using UnityEngine;
 using System.Collections;
+using System;
 
 public class Health : MonoBehaviour {
 	
@@ -19,13 +20,14 @@ public class Health : MonoBehaviour {
 	
 	private Vector3 respawnPosition;
 	private Quaternion respawnRotation;
+    private GameManager gm;
 	
 
 	// Use this for initialization
-	void Start () 
-	{
-		// store initial position as respawn location
-		respawnPosition = transform.position;
+	void Start ()
+    { 
+        // store initial position as respawn location
+        respawnPosition = transform.position;
 		respawnRotation = transform.rotation;
 		
 		if (LevelToLoad=="") // default to current scene 
@@ -60,6 +62,15 @@ public class Health : MonoBehaviour {
 					// do nothing, death must be handled in another way elsewhere
 					break;
 				}
+                if (this.tag=="Player")
+                {
+                    GameManager.gm.playerlive = false;
+                }
+                if (this.tag == "enimy")
+                {
+                    GameManager.gm.kills(1);
+                }
+                    
 				Destroy(gameObject);
 			}
 		}
@@ -84,4 +95,9 @@ public class Health : MonoBehaviour {
 		respawnPosition = newRespawnPosition;
 		respawnRotation = newRespawnRotation;
 	}
+
+    public static implicit operator Health(int v)
+    {
+        throw new NotImplementedException();
+    }
 }

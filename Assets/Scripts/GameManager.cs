@@ -1,74 +1,85 @@
 ﻿using UnityEngine;
 using System.Collections;
 using UnityEngine.UI;
+using UnityEngine.SceneManagement;
 
 using System.Net;
 using System.IO;
+using System;
 
 public class GameManager : MonoBehaviour {
 
 	public static GameManager gm;
+    public static string playerType;
+    public string type;
 
-	[Tooltip("If not set, the player will default to the gameObject tagged as Player.")]
+    [Tooltip("If not set, the player will default to the gameObject tagged as Player.")]
 	public GameObject player;
 
-	public enum gameStates {Playing, Death, GameOver, BeatLevel};
+    public enum gameStates {Playing, Death, GameOver, BeatLevel};
 	public gameStates gameState = gameStates.Playing;
 
 	public int score=0;
 	public bool canBeatLevel = false;
-    public int beatLevelScore = 0;
     public static int timeInit = 120;
     public int timeLeft = timeInit;
     public int timeRefresh =20;
 
+    public GameObject mainCamera;
+    public GameObject staticCanvas;
+    public Text staticCanvasDisplay;
 	public GameObject mainCanvas;
 	public Text mainScoreDisplay;
 	public GameObject gameOverCanvas;
 	public Text gameOverScoreDisplay;
-
 	[Tooltip("Only need to set if canBeatLevel is set to true.")]
 	public GameObject beatLevelCanvas;
 
 	public AudioSource backgroundMusic;
 	public AudioClip gameOverSFX;
-
 	[Tooltip("Only need to set if canBeatLevel is set to true.")]
 	public AudioClip beatLevelSFX;
 
-	private Health playerHealth;
+	public bool playerlive =true;
     private bool BLCoin = false;
+    private int ct = 0;//total coins in the scene
     private int killsCn = 0;
+    private int kt = 0;//total enimiesin the scene
 
-	void Start () {
-		if (gm == null) 
-			gm = gameObject.GetComponent<GameManager>();
+    void Start () {
+        if (gm == null) gm = gameObject.GetComponent<GameManager>();
 
-		if (player == null) {
-			player = GameObject.FindWithTag("Player");
-		}
+        if (player == null)
+        {
+            player = GameObject.FindWithTag("Player");
+        }
 
-		playerHealth = player.GetComponent<Health>();
+        type = playerType;
+        //dynamically adjust
+        if (type == "Achiever")
+        {
+            timeInit = 100;
+            timeLeft = 100;
+            player.GetComponent<Controller>().moveSpeed = 30;
+        }
 
-		// setup score display
-		Collect (0);
-
-        BLCoin = false;
-        killsCn = 0;
-
-		// make other UI inactive
-		gameOverCanvas.SetActive (false);
-		if (canBeatLevel)
-			beatLevelCanvas.SetActive (false);
-	}
-
-    void Awake()
-    {
-        //DontDestroyOnLoad(transform.gameObject);
-        //DontDestroyOnLoad(mainCanvas);
+        // make other UI inactive
+        mainCanvas.SetActive(true);
+        gameOverCanvas.SetActive(false);
+        staticCanvas.SetActive(true);
+        staticCanvasDisplay.text = Application.loadedLevelName + "|" + playerType;
+        if (canBeatLevel)
+            beatLevelCanvas.SetActive(false);
     }
 
     void Update () {
+        if (ct == 0 || kt == 0)
+        {
+            this.ct = GameObject.FindGameObjectsWithTag("pickup").Length;
+            this.kt = GameObject.FindGameObjectsWithTag("enimy").Length;
+            Debug.Log("ct=" + ct + "kt=" + kt);
+        }
+
         switch (gameState)
 		{
 			case gameStates.Playing:
@@ -77,11 +88,10 @@ public class GameManager : MonoBehaviour {
                     timeRefresh = 20;timeLeft -= 1;
                     mainScoreDisplay.text = score.ToString() +"|"+ timeLeft.ToString();
                 }
-                if (playerHealth.isAlive == false || timeLeft==0)
+                if (playerlive == false || timeLeft==0)
 				{
-					// update gameState
-					gameState = gameStates.Death;
-
+                    // update gameState
+                    gameState = gameStates.Death;
 					// set the end game score
 					gameOverScoreDisplay.text = mainScoreDisplay.text;
 
@@ -92,36 +102,31 @@ public class GameManager : MonoBehaviour {
 					// update gameState
 					gameState = gameStates.BeatLevel;
 
-					// hide the player so game doesn't continue playing
-					player.SetActive(false);
-
+                    // hide the player so game doesn't continue playing
+                    player.SetActive(false);
 					// switch which GUI is showing			
 					mainCanvas.SetActive (false);
 					beatLevelCanvas.SetActive (true);
 				}
 				break;
 			case gameStates.Death:
-				backgroundMusic.volume -= 0.01f;
+                backgroundMusic.volume -= 0.1f;
 				if (backgroundMusic.volume<=0.0f) {
 					AudioSource.PlayClipAtPoint (gameOverSFX,gameObject.transform.position);
-
-					gameState = gameStates.GameOver;
-				}
+                    playerType = sendStats(score,ct, killsCn,kt, (timeInit - timeLeft),timeInit);
+                    gameState = gameStates.GameOver; 
+                }
 				break;
 			case gameStates.BeatLevel:
-				backgroundMusic.volume -= 0.01f;
+                backgroundMusic.volume -= 0.1f;
 				if (backgroundMusic.volume<=0.0f) {
 					AudioSource.PlayClipAtPoint (beatLevelSFX,gameObject.transform.position);
-                    Debug.Log("send..");
-					sendStats(score,killsCn,timeLeft);
-					gameState = gameStates.GameOver;
+                    playerType = sendStats(score, ct, killsCn, kt, (timeInit - timeLeft), timeInit);
+                    gameState = gameStates.GameOver;
 				}
 				break;
 			case gameStates.GameOver:
-                // nothing
-                Debug.Log("Coin collected=" + score);
-                Debug.Log("enimy killed=" + killsCn);
-                Debug.Log("time left="+timeLeft);
+                
                 break;
 		}
 
@@ -134,7 +139,6 @@ public class GameManager : MonoBehaviour {
         } else {
 			mainScoreDisplay.text = score.ToString ();
 		}
-
 	}
 
     public void BLCollect()
@@ -151,7 +155,25 @@ public class GameManager : MonoBehaviour {
         killsCn += value;
     }
 
-    public static void sendStats(int coins,int killsCn,int timeLeft)
+
+    [System.Serializable]
+    public class GameMatrix
+    {
+        public int level;
+        public int time_used;
+        public int time_total;
+        public int enemies_killed;
+        public int enemies_total;
+        public int coins_collected;
+        public int coins_total;
+    }
+    [System.Serializable]
+    public class Result
+    {
+        public string class_name;
+        public float class_score;
+    }
+    public static string sendStats(int coins,int coinsT,int killsCn,int killsT,int timeUsed,int timeT)
     {
         string GameServerURL = "http://game.itomaldonado.com/api/1.0/stats";
         string user = "game";
@@ -165,7 +187,18 @@ public class GameManager : MonoBehaviour {
 
         using (var streamWriter = new StreamWriter(httpWebRequest.GetRequestStream()))
         {
-            string json = "{\"level\":1, \"time\":"+(timeInit-timeLeft)+", \"enemies\":"+ killsCn+", \"collected_coins\":" + coins+ ", \"max_coins\":10}";
+            GameMatrix gma = new GameMatrix(); ;
+            string a = Application.loadedLevelName; 
+            gma.level = a[5];
+            gma.time_used = timeUsed;
+            gma.time_total = timeInit;
+            gma.enemies_killed = killsCn;
+            gma.enemies_total = killsT;
+            gma.coins_collected = coins;
+            gma.coins_total = coinsT;
+
+            string json = JsonUtility.ToJson(gma);
+            //string json = "{\"level\":"+1+", \"time\":"+(timeInit-timeLeft)+", \"enemies\":"+ killsCn+", \"collected_coins\":" + coins+ ", \"max_coins\":10}";
             streamWriter.Write(json);
         }
 
@@ -173,7 +206,9 @@ public class GameManager : MonoBehaviour {
         using (var streamReader = new StreamReader(httpResponse.GetResponseStream()))
         {
             var result = streamReader.ReadToEnd();
-            //result{"class":"killer"}
+            Result r= JsonUtility.FromJson<Result>(result);Debug.Log("result" + result);
+            r.class_name= char.ToUpper(r.class_name[0]) + r.class_name.Substring(1); ;
+            return r.class_name;
         }
     }
 }
